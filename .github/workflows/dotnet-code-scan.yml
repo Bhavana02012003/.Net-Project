@@ -1,0 +1,71 @@
+name: .NET Code Scan and Report
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  scan-dotnet-code:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x' # Use the version that matches your project
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Install dotnet-format
+        run: dotnet tool install -g dotnet-format
+
+      - name: Install SecurityCodeScan Analyzer
+        run: dotnet add package SecurityCodeScan.VS2022
+
+      - name: Run dotnet-format (code style analysis)
+        run: dotnet format --verify-no-changes --report ./format-report.json || true
+
+      - name: Run dotnet build with analyzers
+        run: dotnet build -warnaserror || true
+
+      - name: Convert Format Report to CSV
+        run: |
+          import json
+          import csv
+          import os
+
+          rows = [["Tool", "File", "Line", "Severity", "Message", "Rule/Code", "Category"]]
+
+          # Parse format-report.json
+          try:
+              with open("format-report.json") as f:
+                  data = json.load(f)
+
+              for diag in data.get("diagnostics", []):
+                  rows.append([
+                      "dotnet-format",
+                      diag.get("filePath", ""),
+                      diag.get("lineNumber", ""),
+                      "Style",
+                      diag.get("message", ""),
+                      diag.get("ruleId", ""),
+                      "Style"
+                  ])
+          except Exception as e:
+              print("Error parsing format-report.json:", e)
+
+          with open("dotnet-violation-report.csv", "w", newline="") as out:
+              writer = csv.writer(out)
+              writer.writerows(rows)
+        shell: python
+
+      - name: Upload Violation Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-violation-report
+          path: dotnet-violation-report.csv
