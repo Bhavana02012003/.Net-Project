@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SecurityCodeScan" Version="6.8.0" />
+    <PackageReference Include="SecurityCodeScan" Version="3.5.4" />
   </ItemGroup>
 
 </Project>
