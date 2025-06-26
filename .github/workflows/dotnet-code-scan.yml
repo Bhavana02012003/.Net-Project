@@ -25,7 +25,8 @@ jobs:
         run: dotnet tool install -g dotnet-format
 
       - name: Install SecurityCodeScan Analyzer
-        run: dotnet add package SecurityCodeScan.VS2022
+        run: dotnet add ./MyDotNetApp/MyDotNetApp.csproj package SecurityCodeScan --version 3.5.4
+
 
       - name: Run dotnet-format (code style analysis)
         run: dotnet format --verify-no-changes --report ./format-report.json || true
