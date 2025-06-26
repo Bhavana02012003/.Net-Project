@@ -16,52 +16,36 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.x' # Use the version that matches your project
+          dotnet-version: '8.0.x'
 
       - name: Restore Dependencies
-        run: dotnet restore
+        run: dotnet restore ./MyDotNetApp/MyDotNetApp.csproj
 
-      - name: Install dotnet-format
-        run: dotnet tool install -g dotnet-format
-
-      - name: Install SecurityCodeScan Analyzer
-        run: dotnet add ./MyDotNetApp/MyDotNetApp.csproj package SecurityCodeScan --version 3.5.4
-
-
-      - name: Run dotnet-format (code style analysis)
-        run: dotnet format --verify-no-changes --report ./format-report.json || true
-
-      - name: Run dotnet build with analyzers
-        run: dotnet build -warnaserror || true
-
-      - name: Convert Format Report to CSV
+      - name: Run dotnet format and generate report
         run: |
-          import json
+          dotnet tool install -g dotnet-format
+          dotnet format ./MyDotNetApp/MyDotNetApp.csproj --verify-no-changes --report format-report.json || true
+
+      - name: Build Project and Save Warnings
+        run: |
+          dotnet build ./MyDotNetApp/MyDotNetApp.csproj --no-incremental -v:normal > build_output.txt || true
+
+      - name: Convert Build Output to CSV
+        run: |
           import csv
-          import os
+          import re
 
           rows = [["Tool", "File", "Line", "Severity", "Message", "Rule/Code", "Category"]]
 
-          # Parse format-report.json
-          try:
-              with open("format-report.json") as f:
-                  data = json.load(f)
+          with open("build_output.txt", "r") as file:
+              for line in file:
+                  match = re.search(r'(.+\.cs)\((\d+),\d+\): (warning|error) (\w+): (.+?) \[', line)
+                  if match:
+                      file_path, line_no, severity, rule, message = match.groups()
+                      rows.append(["dotnet", file_path.strip(), line_no, severity.capitalize(), message.strip(), rule, "Compiler"])
 
-              for diag in data.get("diagnostics", []):
-                  rows.append([
-                      "dotnet-format",
-                      diag.get("filePath", ""),
-                      diag.get("lineNumber", ""),
-                      "Style",
-                      diag.get("message", ""),
-                      diag.get("ruleId", ""),
-                      "Style"
-                  ])
-          except Exception as e:
-              print("Error parsing format-report.json:", e)
-
-          with open("dotnet-violation-report.csv", "w", newline="") as out:
-              writer = csv.writer(out)
+          with open("dotnet-violation-report.csv", "w", newline='') as out_file:
+              writer = csv.writer(out_file)
               writer.writerows(rows)
         shell: python
 

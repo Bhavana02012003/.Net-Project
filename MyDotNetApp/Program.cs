@@ -6,7 +6,7 @@ namespace MyDotNetApp
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("🔒 Hello, Secure .NET World!");
+            Console.WriteLine("🔒 Hello Welcome, Secure .NET World!");
             
             string userInput = Console.ReadLine(); // 🛑 Potential security issue (SecurityCodeScan will flag this)
             Console.WriteLine("User input: " + userInput);
